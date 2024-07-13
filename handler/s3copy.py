@@ -4,15 +4,15 @@ import os
 
 s3 = boto3.client("s3")
 
+CONFIG_FILE = "./config.json"
 
-def get_target_key():
+def get_target_key(key: str):
     """jsonファイルから取得したtarget_prefixを返す"""
     import datetime
 
-    with open("./config.json") as f:
+    with open(CONFIG_FILE) as f:
         config = json.load(f)
-        # TODO: 一旦先頭の要素を取得
-        target_prefix = config["target_prefix"][0]
+        target_prefix = config["target_prefix"][key]
         today = datetime.datetime.now().strftime("%Y/%m/%d")
 
     return f"{target_prefix}/{today}"
@@ -25,11 +25,12 @@ def handler(event, context):
 
     # イベントからS3オブジェクト情報を取得
     source_key = event["Records"][0]["s3"]["object"]["key"]
+    key = source_key.split("/")[-1].split(".")[0]
 
     if source_key.endswith(".json"):
         try:
             copy_source = {"Bucket": source_bucket, "Key": source_key}
-            target_key = f"{get_target_key()}/{source_key}"
+            target_key = f"{get_target_key(key)}/{source_key}"
             s3.copy_object(CopySource=copy_source, Bucket=target_bucket, Key=target_key)
             print(f"Successfully copied {source_key} from {source_bucket} to {target_bucket}/{target_key}")
             return {"statusCode": 200, "body": json.dumps(f"Successfully copied {source_key}")}

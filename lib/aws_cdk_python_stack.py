@@ -22,8 +22,8 @@ class MyCdkProjectStack(Stack):
         s3_copy_lambda = _lambda.Function(
             self,
             "s3copyHandler",
-            runtime=_lambda.Runtime.PYTHON_3_9,
-            code=_lambda.Code.from_asset("lambda"),
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            code=_lambda.Code.from_asset("handler"),
             handler="s3copy.handler",
             environment={
                 "SOURCE_BUCKET": SOURCE_BUCKET,
