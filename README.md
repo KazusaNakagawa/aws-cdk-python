@@ -14,7 +14,7 @@
 ```bash
 # Ex
 ## s3 upload
-aws s3 cp ./test1.json s3://s3-copy-source-bucket-dev/test1.json
+aws s3 cp ./test1.json s3://s3-copy-source-bucket-dev/{{prefix}}/test1.{{suffix}} --profile {{profile}}
 
 ## Upload file to S3
 aws s3 ls s3://s3-copy-source-bucket-dev --rec
