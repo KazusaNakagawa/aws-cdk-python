@@ -27,17 +27,13 @@ def handler(event, context):
     source_key = event["Records"][0]["s3"]["object"]["key"]
     key = source_key.split("/")[-1].split(".")[0]
 
-    if source_key.endswith(".json"):
-        try:
-            copy_source = {"Bucket": source_bucket, "Key": source_key}
-            target_key = f"{get_target_key(key)}/{source_key}"
-            s3.copy_object(CopySource=copy_source, Bucket=target_bucket, Key=target_key)
-            print(f"Successfully copied {source_key} from {source_bucket} to {target_bucket}/{target_key}")
-            return {"statusCode": 200, "body": json.dumps(f"Successfully copied {source_key}")}
-        except Exception as e:
-            print(e)
-            print(f"Error copying {source_key} from {source_bucket} to {target_bucket}")
-            return {"statusCode": 500, "body": json.dumps(f"Error copying {source_key}")}
-    else:
-        print(f"{source_key} is not a .json file. No action taken.")
-        return {"statusCode": 200, "body": json.dumps(f"{source_key} is not a .json file. No action taken.")}
+    try:
+        copy_source = {"Bucket": source_bucket, "Key": source_key}
+        target_key = f"{get_target_key(key)}/{source_key.split('/')[-1]}"
+        s3.copy_object(CopySource=copy_source, Bucket=target_bucket, Key=target_key)
+        print(f"Successfully copied {source_key} from {source_bucket} to {target_bucket}/{target_key}")
+        return {"statusCode": 200, "body": json.dumps(f"Successfully copied {source_key}")}
+    except Exception as e:
+        print(e)
+        print(f"Error copying {source_key} from {source_bucket} to {target_bucket}")
+        return {"statusCode": 500, "body": json.dumps(f"Error copying {source_key}")}

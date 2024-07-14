@@ -8,14 +8,17 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # 環境変数からバケット名を取得
 SOURCE_BUCKET = os.environ["SOURCE_BUCKET"]
 TARGET_BUCKET = os.environ["TARGET_BUCKET"]
 
 
-class MyCdkProjectStack(Stack):
+class CdkProjectStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, env: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Lambda関数を定義
@@ -25,6 +28,7 @@ class MyCdkProjectStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             code=_lambda.Code.from_asset("handler"),
             handler="s3copy.handler",
+            function_name=f"s3copyHandler-{env}",
             environment={
                 "SOURCE_BUCKET": SOURCE_BUCKET,
                 "TARGET_BUCKET": TARGET_BUCKET,
@@ -62,5 +66,5 @@ class MyCdkProjectStack(Stack):
         source_bucket.add_event_notification(
             s3.EventType.OBJECT_CREATED,
             s3_notifications.LambdaDestination(s3_copy_lambda),
-            s3.NotificationKeyFilter(suffix=".json"),
+            s3.NotificationKeyFilter(prefix="input/", suffix=".json"),
         )
