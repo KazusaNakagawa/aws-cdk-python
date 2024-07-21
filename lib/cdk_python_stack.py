@@ -10,6 +10,8 @@ from aws_cdk import (
 from constructs import Construct
 from dotenv import load_dotenv
 
+from .config import LAMBDA_NAMES
+
 load_dotenv()
 
 # 環境変数からバケット名を取得
@@ -23,9 +25,21 @@ class CdkProjectStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, env: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # 既存のS3バケットを参照
-        source_bucket = s3.Bucket.from_bucket_name(self, "ExistingSourceBucket", SOURCE_BUCKET)
+        self.env = env
 
+        # 既存のS3バケットを参照
+        self.source_bucket = s3.Bucket.from_bucket_name(self, "ExistingSourceBucket", SOURCE_BUCKET)
+        # カスタムIAMロールを生成
+        self.generate_custom_role()
+        # Lambda関数を生成
+        [self.generate_lambda(name) for name in LAMBDA_NAMES]
+
+
+    def generate_custom_role(self):
+        """カスタムIAMロールを生成"""
+
+        # IAMロールを定義し、カスタムポリシーをアタッチ
+        self.custom_role = iam.Role(self, "CustomRole", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"))
         # カスタムポリシーを定義
         custom_policy = iam.Policy(
             self, "CustomPolicy",
@@ -52,35 +66,38 @@ class CdkProjectStack(Stack):
                 ),
             ],
         )
+        custom_policy.attach_to_role(self.custom_role)
 
-        # IAMロールを定義し、カスタムポリシーをアタッチ
-        custom_role = iam.Role(self, "CustomRole", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"))
-        custom_policy.attach_to_role(custom_role)
 
-        # Lambda関数を定義
+    def generate_lambda(self, name: str):
+        """Lambda関数を定義"""
+
         default_lambda = DefaultLambda(
             self,
-            "defaultHandler",
-            role=custom_role,
-            function_name=f"defaultHandler-{env}",
+            f"{name}Lambda",
+            role=self.custom_role,
+            function_name=f"{name}Handler-{self.env}",
         )
+        default_lambda.add_environment("ENV", self.env)
 
         # LambdaトリガーにS3バケットを設定
-        source_bucket.add_event_notification(
+        self.source_bucket.add_event_notification(
             s3.EventType.OBJECT_CREATED,
             s3_notifications.LambdaDestination(default_lambda),
             s3.NotificationKeyFilter(
-                prefix="input/",
+                prefix=f"input/{self.env}/{name}/",
                 suffix=".json",
             ),
         )
 
 
 class DefaultLambda(_lambda.Function):
+    """Lambda関数のデフォルト設定を定義"""
+
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(
-            scope,
-            id,
+            scope=scope,
+            id=id,
             runtime=_lambda.Runtime.PYTHON_3_12,
             code=_lambda.Code.from_asset("handler"),
             handler="s3copy.handler",
